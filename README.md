@@ -1,3 +1,6 @@
+# DRAFT: This is the opinions of Chris Matteson, and not official guidance or endorsed by HashiCorp
+
+
 # Terraform Code Style Guide
 
 Like all languages, Terraform is infinitely flexible in how it can be used. Very different code can result in the same deployment. This document attempts to provide opinionated guidelines, which while optional for Terraform to work, have been collected from countless hours of working with the language by dozens of people in the real world scenarios.
@@ -23,21 +26,23 @@ For the purpose of clarity, this document offers the following definitions:
 
 **Root Module: **The root module is built from the configuration files in the current working directory when Terraform is run, and this module may reference child modules in other directories or remotely sourced, which can in turn reference other modules, etc.
 
-**Child Module:** A module which isn’t intended to be directly run with Terraform, but instead to be consumed by another module. This module creates a “component”, and tells its own unique story or chapter.
+**Child Module:** A module which isn’t typically run directly from the Terraform CLI, but instead consumed by another module. This module creates a “component”, by completing it’s own unique function.
 
 **Generalized Child Module:** A special type of child module intended for very broad consumption. Well written Terraform Public Registry modules are generally Generalized Child Modules. Unlike most child modules because they often include significantly more  inputs/outputs and switching logic in the code to allow them to solve most or all possible use cases for the component.
 
 
-## Core Analogy/Philosophy: Terraform Tells a Story
+## Core Paradigm
 
-While the rest of this guide will focus on minutiae, it will reference back again and again to the core analogy, or philosophy of the guide. That is that, all Terraform code tells a story. Stories have several features in common with Terraform code:
+Terraform at its core is a human readable, machine parsable, declarative immutable language for defining API addressable infrastructure. The approach possesses an incredible amount of power, as well as flexibility. As part of the defined state approach, Terraform creates a Directed Acyclic Graph (DAG) to define all of the relationships between resources. This allows for multithreading, while simplifying the code. However it also renders the order of the code meaningless to the machine parsing the code. Another unusual factor of the language is that the basic container of code is not a function, or even a file, but a non-recursive directory. Resources can be placed in any terraform file in the directory without altering how Terraform will function.
+
+This guide addresses foremost the human readability of the code. Even though lots of code will achieve the same results, the ability to understand this code is not equivalent. Humans tend to consume information in a semi linear fashion like a book. Books have several features in common with Terraform code:
 
 
 
-*   Stories are meant to be consumed by the (human) reader in a certain way
-*   Stories have an intended audience, and the author makes assumptions about what that audience knows
-*   Short stories might exist without further structure, but long stories and broken into chapters
-*   Information which needs to be looked up should be cataloged as to be easy to find
+*   Books are meant to be consumed by the (human) reader in a certain way
+*   Books have an intended audience, and the author makes assumptions about what that audience knows
+*   Short books might exist without further structure, but long books are broken into chapters
+*   Information which needs to be looked up should is cataloged as to be easy to find in an index
 
 While this analogy isn’t perfect, the net result is usually good Terraform code, furthermore it’s also helpful for resolving a lot of decisions when writing code that could go either way by other standards.
 
@@ -47,9 +52,33 @@ While this analogy isn’t perfect, the net result is usually good Terraform cod
 This section covers the structure of files inside a Terraform module, be that a root module or child module.
 
 
+### The Invisible Edge Problem
+
+This concern is broken out above all others because it represents the most problematic common practice of Terraform code, which inherently undermines the human readability of Terraform code because of two basic features of Terraform. As mentioned in the prior section, Terraform:
+
+
+
+1. Creates a DAG, so the order of code is irrelevant
+2. Blindly combines all Terraform files in a directory
+
+The result is the invisible edge problem which undermines the readability of the code. By separating resources, data sources, etc into separate terraform files inside a directory, we create edges across those files while are completely invisible unless we read and understand all of the code in every file. Each individual file cannot be evaluated by itself, because dependencies could exist which won’t be discoverable within that file.
+
+There are three exceptions to this which don’t impact the ability to understand the Terraform code, and none of them include resources, data sources, or providers.
+
+
+
+1. Inputs: These cannot be dependent on anything else, and will also clearly represent just one thing. Putting them in their own file makes it easier to understand what levers exist to modify when using the module.
+2. Outputs: The opposite of Inputs, these are at the other end of the code, and represent only information which should be extracted from the module. Again useful for reference, and thus are better exposed in their own file.
+3. Terraform statements: Backend configuration, required_versions, required_providers, and experiments parameters. These all are independent of the Terraform code itself but takes action on how Terraform interacts with the code, and thus should be independent. 
+
+The right solution to this problem is Submodules. Submodules provide very clear edges using variables and outputs. It's completely reasonable to read just a module block and understand enough about how that submodule is used without needing to actually read the rest of the module code.
+
+In anything except the most simple demo code which is being written, submodules will provide an easier to understand and more scalable approach. practice this tends to reduce readability.
+
+
 ### Terraform File Names
 
-Terraform will combine all files ending in .tf or .tf.json within a single directory. What those files are named before the extension is purely up to the user. That flexibility has resulted in a lot of confusion, and demand for prescription. In nearly all cases, the following are all the files which should exist, although not all of them need to exist if they wouldn’t have any content.
+As mentioned, Terraform will combine all files ending in .tf or .tf.json within a single directory. What those files are named before the extension is purely up to the user. That flexibility has resulted in a lot of confusion, and demand for prescription. In nearly all cases, the following are all the files which should exist, although not all of them need to exist if they wouldn’t have any content.
 
 **main.tf:** Contains all data, local, provider, and resource blocks
 
@@ -63,7 +92,7 @@ It’s still very common to a lot of other terraform file names used. The follow
 
 **Other Locations for Variables/Outputs:** Because they are the contract of communication terms between humans and the module or between modules, Variables and Outputs are reference materials and should be easy to lookup. Placing them in their own files makes them quick and efficient to look up.
 
-**data.tf: **Separating out data sources into its own file. Data blocks are intimately tied to Resource blocks. They can both be depended on and depend on Resources. Unlike Variables or Outputs, they don’t provide any significant value to the human reader to have them in reference format since they aren’t actionable. They are best included in the main.tf where it’s needed to continue the story.
+**data.tf: **Separating out data sources into its own file. Data blocks are intimately tied to Resource blocks. They can both be depended on and depend on Resources. Unlike Variables or Outputs, they don’t provide any significant value to the human reader to have them in reference format since they aren’t actionable. They are best included in the main.tf.
 
 **backend.tf: **Separating out the backend configuration into its own file. This generally results in a very short file, like all files potentially including Terraform blocks. Thus they are better combined into a single file.
 
@@ -71,20 +100,9 @@ It’s still very common to a lot of other terraform file names used. The follow
 
 **override.tf:** A special terraform file to [override other resource definitions](https://www.terraform.io/docs/configuration/override.html). No need to use this in the typical workflow.
 
-**providers.tf:** Separating out providers into its own file. While not recommended, providers can also be dependent resources. Similar to data sources, these aren’t needed as reference. They should exist where they make sense in the story, usually at the top of the main.tf where they set the stage for the story which the data sources and resources will tell.
+**providers.tf:** Separating out providers into its own file. While not recommended, providers can also be dependent resources. Similar to data sources, these aren’t needed as reference. They should exist where they make sense in the code, usually at the top of the main.tf where they set the stage which the data sources and resources will tell.
 
-**&lt;component>.tf:** It’s very common to still see individual components or resource types separated into their own files. It's easy, and it's similar to how other languages would break apart files and makes sense from the standpoint of an individual author. The problem is that it works particularly poorly for Terraform. Terraform does two unique things which make this practice problematic:
-
-
-
-1. Terraform blindly combines all files in a directory, without any explicit imports or function edges.
-2. Terraform orders resources by generating a Directed Acyclic Graph instead of in order of which they are written.
-
-The result of these unique Terraform features when combined with splitting resources across multiple files is that there are graph edges which cross files in completely unpredictable ways. While separating these files makes each individual file easier to consumer, their inherently opaque interconnectedness means it's impossible to actually understand what's going on without reviewing all parts, often skipping back and forth between files.
-
-Submodules on the other hand provide very clear edges using variables and outputs. It's completely reasonable to read just a module block and understand enough about how that submodule is used without needing to actually read the rest of the module code.
-
-In anything except the most simple demo code which is being written, submodules will provide an easier to understand and more scalable approach. practice this tends to reduce readability of the story.
+**&lt;component>.tf:** It’s very common to still see individual components or resource types separated into their own files. The issue here is addressed in the “Invisible Edge Problem” above. 
 
 
 ### Other Files in Module
@@ -126,16 +144,23 @@ Not everything should be in the module, even if it could be.
 *   **Unrelated Files:** Files which don’t directly relate to Terraform shouldn’t be included.
 
 
+### One module for everything, or multiple modules using External State?
+
+The ultimate bounds of root modules can often be difficult to determine. The reality is that the decision here is typically better to be based on business and organizational realities than what can be done with Terraform. Terraform code should have clear owners and lifecycles, if different parts cross between parts of the organization to perform related but different tasks, like creating underlying networking vs compute, it’s often easier to have separate modules.
+
+Another related and common issue is when one set of Terraform code stands up infrastructure which is used by another provider, such as standing up EKS, then using the helm provider to deploy a workload. While the Terraform DAG will properly order the resources across the provider boundary, Terraform refresh does not understand the provider boundary, and if something were to occur after deployment, such as the EKS cluster being deleted, all applies will fail because a refresh can’t be performed on the helm deployment. In general, providers should exist at or next to the beginning of the DAG when possible.
+
+
 ### Should this be a module?
 
 One of the most common questions people have is determining if a segment of code should be a module. The primary considerations for this should be:
 
 
 
-*   Consider child modules to be “chapters” of the story. Use chapters to make longer stories easier to follow.
+*   Consider child modules to be “chapters” of the book. Use chapters to make longer books easier to follow. This can effectively replace the use of component files, although it might not look exactly the same.
 *   Module “chapters” should have their own story arc. The module shouldn’t exist to:
     *   Wrap a single resource (or just a couple resources).
-    *   Wrap a single type resources like IAM which are used for a bunch of unrelated resources.
+    *   Wrap a single type of resources like IAM which are used for a bunch of unrelated resources.
 *   The general rule is that the code to call a child module should replace at least 5x the lines of code it would take to perform the work.
 *   It’s perfectly acceptable for the root module to:
     *   Do nothing but call child modules
@@ -143,7 +168,7 @@ One of the most common questions people have is determining if a segment of code
     *   Have a mix of resources and child modules
 
 
-### Where should this module live?
+### Where should this module be called from?
 
 There are multiple places where a module can live. Because Terraform is Infrastructure as Code, the recommendation is to always have Terraform Modules saved into version control such as git. Where the module lives depends on its target audience and lifecycle.
 
@@ -152,13 +177,13 @@ There are multiple places where a module can live. Because Terraform is Infrastr
 *   **Submodule:** These modules exist inside a modules folder of another module. Because of this they will share the same git repository. The benefits of this pattern are that it avoids double commits that would be necessary to properly update child modules in a git repository or registry, and there is no need to run terraform init -upgrade. However submodules generally aren’t usable externally. They are best for child modules which exist purely to simplify the root module by breaking apart an otherwise large main.tf.
 *   **Public Git Repository: **These modules are public, but aren’t easily discoverable. It’s a great place to store work which doesn’t contain secret or proprietary information. Public git repositories allow modules to be discovered and reused as submodules in other projects or by other people. Unlike the registry, they don’t support version negotation, but there also isn’t a bar in expected completeness or reusability.
 *   **Private Git Repository: **Similar advantages to public git repositories, except that it could potentially include proprietary information. Secrets are still generally discouraged.
-*   **Public Registry:** The Terraform Public Registry at ([https://registry.terraform.io](https://registry.terraform.io)). Modules here will also be backed by a git repository, but can be called using the registry source syntax which allows for version negotiation to allow easier tracking of dependent modules.
+*   **Public Registry:** The Terraform Public Registry at ([https://registry.terraform.io](https://registry.terraform.io)). Modules here will also be backed by a git repository as well, but can be called using the registry source syntax which allows for version negotiation to allow easier tracking of dependent modules.
 *   **Private Registry: **Similar advantages to Public Registry, but since it’s unique to an organization, it’s much easier to write modules which cover all of the potential use cases for an organization, without having to solve a problem in a truly generic fashion. It’s common that organizations will have best practices on how to implement certain behaviors and Private Registry modules are the perfect place to implement these policies.
 
 
 ### Generalized Child Modules
 
-There exists a special type of child module used for managing a discrete component with the flexibility to handle most or all potential permutations via variable inputs. The verified [terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws)  module on the registry is a great example. These modules can be so fundamental that there isn’t a need to review the child module code when trying to understand the root module. To our story analogy, this is akin to a book which mentions the protagonist using a car. The book isn’t about cars, and doesn’t try to explain what a car is. It’s assumed the reader knows. If the reader wants to know more, they can investigate further and find books that describe cars in great detail.
+There exists a special type of child module used for managing a discrete component with the flexibility to handle most or all potential permutations via variable inputs. The verified [terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) module on the registry is a great example. These modules can be so fundamental that there isn’t a need to review the child module code when trying to understand the root module. This is akin to a book which mentions the protagonist using a car. The book isn’t about cars, and doesn’t try to explain what a car is. It’s assumed the reader knows. If the reader wants to know more, they can investigate further and find books that describe cars in great detail.
 
 By trying to accomodate so many use cases, these modules also often violate a few goals of this guide. Namely they can be incredibly complex with a ton of switching logic that means most of the code isn’t ever used.
 
@@ -187,7 +212,7 @@ There is more nuance to deciding where a module (which isn't in a modules subfol
         *   Easy to discover
         *   Easy to use in CI pipeline which triggers deployments based on changes to project code without changing Terraform code
     *   Disadvantages:
-        *   May not actually be the best code to deploy application
+        *   May be mistaken as “official” deployment method, even if it isn’t
         *   Not applicable to a lot of situations
 
 
@@ -249,14 +274,14 @@ Well written Terraform modules should be reusable without changes. Like printing
 
 ### Ordering
 
-Ordering inside the file should tell a story. While Terraform is multithreaded, humans usually are not. The best order is likely the same order a person might have gone through all the steps were they planned out. General best practices:
+Ordering inside the file should be relatively linear. While Terraform is multithreaded, humans usually are not. The best order is likely the same order a person might have gone through all the steps were they planned out. General best practices:
 
 
 
 *   Dependent resources are defined in the file before those that depend on them
 *   Providers at the top of the file to “set the scene”
 *   Globally used items at the top of the file after providers:
-    *   Randomly generated IDs
+    *   Randomly generated strings used throughout the file for naming
     *   Globally useful data sources like azurerm_client_config
     *   Locals
 *   Terraform code files should logically “build”. While we don’t enforce ordering, the file should be ordered.
@@ -265,25 +290,28 @@ Ordering inside the file should tell a story. While Terraform is multithreaded, 
 
 ### Comments
 
-Comments are crucial for telling the story. They however can also become distracting when adding more verbosity than necessary. It’s crucial to consider the audience when considering comments. I typically recommend writing code oriented towards someone else with a solid but not necessarily complete mastery of Terraform. Terraform is already “documentation” so the recommended guidelines are:
+Comments are crucial for understanding complicated code. They however can also become distracting when adding more verbosity than necessary. It’s crucial to consider the audience when considering comments. I typically recommend writing code oriented towards someone else with a solid but not necessarily complete mastery of Terraform. Terraform is already “documentation” so the recommended guidelines are:
 
 
 
 *   Consider the audience when writing comments. Typically the recommendation is writing code oriented towards someone else with a solid but not necessarily complete mastery of Terraform. Do not write to the lowest common denominator
-*   Comments should add additional detail, not restate something which the resource clearly demonstrates.
-*   Use hash (#) exclusively over double slash (//)
-*   Prefer hash (#) to multiline comments (/* */) unless the comment is very long, such as or for use while commenting out resources
+*   Comments should add additional detail, often the “why”, not restate something which the resource clearly demonstrates.
+*   Be consistent with types of comment delimiters used. General preference by populatority:
+    *   Use hash (#) exclusively over double slash (//)
+    *   Prefer hash (#) to multiline comments (/* */) unless the comment is very long, such as or for use while commenting out resources
 *   Metadata often requires comments
     *   Metadata including lifecycle or count usually represent a lot of additional information regarding their purpose, but which typically can’t be understood from reaching just the singular resource block. Add a quick comment that addresses why this is used.
+*   Loops, counts, and other complicated dynamic code almost always deserves a comment.
+*   It should never take longer than a minute from someone adept in Terraform, but not familiar with a certain codebase to understand what a particular resource or data source is doing.
 
 
 ### Dynamic Code
 
-Terraform provides a lot of ways to minimize the code that needs to be written, one of the most powerful mechanisms is the ability to write dynamic code. Terraform 0.12 introduced some new constructs such as for_each and dynamic blocks to supplement count, and 0.13 will introduce further dynamic features with the extension of count and for_each to modules.
+Terraform provides a lot of ways to minimize the code that needs to be written, one of the most powerful mechanisms is the ability to write dynamic code. Terraform 0.12 introduced some new constructs such as for_each and dynamic blocks to supplement count, and 0.13 introduced further dynamic features with the extension of count and for_each to modules.
 
 Shorter, more dynamic code however is also more complex, and the readability of the module can be lost in the mission to save lines. Do use dynamic code, but as mentioned in the comments section, almost any use of dynamic code merits at least a one line explanation of what is going on.
 
-One special consideration is using Count as an on/off switch. It’s a common practice dating back to at least a blog from Gruntworks. It’s an incredibly powerful mechanism to make the code applicable to more use cases. However it’s very easy to abuse. For modules which are not “Generalized”, **it’s usually better to use the copy->paste->edit workflow to create a new module than to use count as a switch.**
+One special consideration is using Count as an on/off switch. It’s a common practice dating back to at least a blog from 2016. It’s an incredibly powerful mechanism to make the code applicable to more use cases. However it’s very easy to abuse. For modules which are not “Generalized”, **it’s usually better to use the copy->paste->edit workflow to create a new module than to use count as a switch.**
 
 
 ### Provider and Module Versions
@@ -295,13 +323,13 @@ One significant recommendation is to **never use the version statement within a 
 
 ## Secrets in Terraform Code
 
-Due to the nature of configuring infrastructure, there are almost always secrets which Terraform is or could be exposed to. Terraform open source however doesn’t manage these secrets itself in any particularly secure way. Terraform Enterprise improves on this process via encryption of the state file through HashiCorp Vault. However there are still several other considerations:
+Due to the nature of configuring infrastructure, there are almost always secrets which Terraform is or could be exposed to. Terraform's CLI considers the entire state to be a sensitive artifact, assuming the user will keep it secure, and so doesn't do anything special beyond hiding values in the CLI output. Terraform Enterprise and Terraform Cloud improves on this process via encryption of the state file through HashiCorp Vault. However there are still several other considerations:
 
 
 
 *   Secrets should be passed to providers via provider specific environment variables whenever possible. This is the only way to keep these secrets out of the state file. While Terraform variables will keep them out of the code, those variables will be loaded into the state file.
 *   When used in a pipeline within a CI tool or Terraform Enterprise, there is still a risk that a malicious Terraform code committer could use local_exec provisioner or external data source to use “printenv” to access the credentials. Terraform Enterprise should always include a Sentinel policy to prevent the use of the local_exec provisioner or external data source from being used by default. Those, as well as third party providers should be treated as items which need to be whitelisted per workspace.
-*   Another option is to use the Terraform Vault provider to query dynamic cloud credentials for each run. The problem of this method is determining how to authenticate. The easiest method is to provide each workspace with its own token, but this is obviously a lot of manual effort. Instead Vault Agent could be used to authenticate the entire server, but there would be no way to provide different cloud permissions per workspace. Additionally Terraform code needs to be inserted for Terraform to know to make this call. Finally Terraform providers don’t have a way to signal to Vault that the run has finished, meaning that the dynamic credentials need to live longer than the maximum expected run, but in many instances someone with access to the state file could retrieve the credentials before they expire.
+*   Another option is to use the Terraform Vault provider to query dynamic cloud credentials for each run. The problem of this method is determining how to authenticate. The easiest method is to provide each workspace with its own token, but this is obviously a lot of manual effort. Instead Vault Agent could be used to authenticate the entire server, but there would be no way to provide different cloud permissions per workspace. Additionally Terraform code needs to be inserted for Terraform to know to make this call. Finally Terraform providers don’t have a way to signal to Vault that the run has finished, meaning that the dynamic credentials need to live longer than the maximum expected run, but in many instances someone with access to the state file could retrieve the credentials before they expire. Likewise Terraform doesn’t have a way to refresh the credential so defining too short of a validity period could result in a long run failing.
 
 
 ## Application Onboarding
@@ -340,7 +368,7 @@ Some of the greatest value of Infrastructure as Code workflows comes from the ab
 *   Lifecycle test
     *   terraform plan, terraform apply, terraform destroy - Validates that code will actually apply and destroy successfully. Use for Pull Requests or nightlies depending on overhead
 *   Unit test
-    *   Sentinel - HashiCorp tool for writing policies. Able to ingest Terraform plan and configuration to evaluate arbitrary rules.
+    *   Sentinel - HashiCorp tool for writing policies. Able to ingest Terraform plan and configuration to evaluate arbitrary rules. Technically designed for policy as code and not unit testing.
     *   Conftest - Platform from Open-Policy for testing configuration files. Less Terraform aware than Sentinel.
 *   Pipecleaning test
     *   Test the application stack which Terraform is deploying to ensure it’s up. This usually gives a good indication that the Terraform code worked. These tests can be in any language/platform as they aren’t actually testing Terraform. This doesn’t need to be the full suite of tests that are run against the application, just enough to validate the infrastructure deployed correctly. One preferred practice is for the application to have some health endpoint which can be queried to validate the application, a simple curl to that endpoint would then be a sufficient test.
@@ -362,6 +390,10 @@ When writing Sentinel Policies, it’s important to keep in mind that all polici
 *   Enforce Behavior
 
 The recommendation is to at minimum have a policy which restricts usage of the local_exec provisioner, external data source, and custom providers. This is to prevent malicious committers gaining access to credentials. Individual workspaces should be whitelisted as necessary to use these.
+
+The Terraform Foundational Policies Library includes a ton of great examples on how to use Policy as Code with Terraform:
+
+[https://github.com/hashicorp/terraform-foundational-policies-library](https://github.com/hashicorp/terraform-foundational-policies-library)
 
 
 ## Lifecycle
