@@ -12,7 +12,7 @@ This guide should be used as a preferred approach. It does not attempt to accomm
 
 For the purpose of clarity, this document offers the following definitions:
 
-**Terraform Configuration File: **A file ending in .tf or .tf.json which contains Terraform code
+**Terraform Configuration File:** A file ending in .tf or .tf.json which contains Terraform code
 
 **Top-Level Keyword:** The only allowable words to begin a top level block in Terraform
 
@@ -24,7 +24,7 @@ For the purpose of clarity, this document offers the following definitions:
 
 **Module:** A collection of .tf or, .tf.json or .tfvars files kept together in a directory and intended to be managed in version control.  This can also include sub folders for artifacts to be parsed by the terraform code, and artifacts of version control or workflow such as *.ci, .gitignore and *.md files
 
-**Root Module: **The root module is built from the configuration files in the current working directory when Terraform is run, and this module may reference child modules in other directories or remotely sourced, which can in turn reference other modules, etc.
+**Root Module:** The root module is built from the configuration files in the current working directory when Terraform is run, and this module may reference child modules in other directories or remotely sourced, which can in turn reference other modules, etc.
 
 **Child Module:** A module which isn’t typically run directly from the Terraform CLI, but instead consumed by another module. This module creates a “component”, by completing it’s own unique function.
 
@@ -92,11 +92,11 @@ It’s still very common to a lot of other terraform file names used. The follow
 
 **Other Locations for Variables/Outputs:** Because they are the contract of communication terms between humans and the module or between modules, Variables and Outputs are reference materials and should be easy to lookup. Placing them in their own files makes them quick and efficient to look up.
 
-**data.tf: **Separating out data sources into its own file. Data blocks are intimately tied to Resource blocks. They can both be depended on and depend on Resources. Unlike Variables or Outputs, they don’t provide any significant value to the human reader to have them in reference format since they aren’t actionable. They are best included in the main.tf.
+**data.tf:** Separating out data sources into its own file. Data blocks are intimately tied to Resource blocks. They can both be depended on and depend on Resources. Unlike Variables or Outputs, they don’t provide any significant value to the human reader to have them in reference format since they aren’t actionable. They are best included in the main.tf.
 
-**backend.tf: **Separating out the backend configuration into its own file. This generally results in a very short file, like all files potentially including Terraform blocks. Thus they are better combined into a single file.
+**backend.tf:** Separating out the backend configuration into its own file. This generally results in a very short file, like all files potentially including Terraform blocks. Thus they are better combined into a single file.
 
-**versions.tf: **Same logic as backend.tf. There isn’t enough in any files with terraform blocks to justify having its own file.
+**versions.tf:** Same logic as backend.tf. There isn’t enough in any files with terraform blocks to justify having its own file.
 
 **override.tf:** A special terraform file to [override other resource definitions](https://www.terraform.io/docs/configuration/override.html). No need to use this in the typical workflow.
 
@@ -128,8 +128,8 @@ Multiple other files are often included within Terraform Modules because they ar
 
 *   **README.md:** Readme file in markdown. Should provide at minimum an introduction to the module and its purpose. For Generic Child Modules, should be much more verbose with usage examples, and explanation of at least primary choices when utilizing.
 *   **/files:** Directory which holds static files which Terraform utilizes. If the files are being copied somewhere else, they already be named the same with the same extension as they will be at their destination.
-*   **/templates: **Directory which holds dynamic template files to be used by the template data source or function. Should be named the same, including extension as they will at their destination, except with an additional extension of .tmpl added.
-*   **/modules: **Directory which holds submodules.
+*   **/templates:** Directory which holds dynamic template files to be used by the template data source or function. Should be named the same, including extension as they will at their destination, except with an additional extension of .tmpl added.
+*   **/modules:** Directory which holds submodules.
 *   **/examples:** Directory for child modules to show working examples of how to use the module.
 *   **/tests:** Directory to contain any tests for the Terraform module.
 
@@ -140,7 +140,7 @@ Not everything should be in the module, even if it could be.
 
 
 
-*   **Binaries: **Recommend using an Artifact Repository, such as Artifactory. Because Terraform typically goes into VCS, and binaries fit poorly in VCS
+*   **Binaries:** Recommend using an Artifact Repository, such as Artifactory. Because Terraform typically goes into VCS, and binaries fit poorly in VCS
 *   **Unrelated Files:** Files which don’t directly relate to Terraform shouldn’t be included.
 
 
@@ -175,10 +175,10 @@ There are multiple places where a module can live. Because Terraform is Infrastr
 
 
 *   **Submodule:** These modules exist inside a modules folder of another module. Because of this they will share the same git repository. The benefits of this pattern are that it avoids double commits that would be necessary to properly update child modules in a git repository or registry, and there is no need to run terraform init -upgrade. However submodules generally aren’t usable externally. They are best for child modules which exist purely to simplify the root module by breaking apart an otherwise large main.tf.
-*   **Public Git Repository: **These modules are public, but aren’t easily discoverable. It’s a great place to store work which doesn’t contain secret or proprietary information. Public git repositories allow modules to be discovered and reused as submodules in other projects or by other people. Unlike the registry, they don’t support version negotation, but there also isn’t a bar in expected completeness or reusability.
-*   **Private Git Repository: **Similar advantages to public git repositories, except that it could potentially include proprietary information. Secrets are still generally discouraged.
+*   **Public Git Repository:** These modules are public, but aren’t easily discoverable. It’s a great place to store work which doesn’t contain secret or proprietary information. Public git repositories allow modules to be discovered and reused as submodules in other projects or by other people. Unlike the registry, they don’t support version negotation, but there also isn’t a bar in expected completeness or reusability.
+*   **Private Git Repository:** Similar advantages to public git repositories, except that it could potentially include proprietary information. Secrets are still generally discouraged.
 *   **Public Registry:** The Terraform Public Registry at ([https://registry.terraform.io](https://registry.terraform.io)). Modules here will also be backed by a git repository as well, but can be called using the registry source syntax which allows for version negotiation to allow easier tracking of dependent modules.
-*   **Private Registry: **Similar advantages to Public Registry, but since it’s unique to an organization, it’s much easier to write modules which cover all of the potential use cases for an organization, without having to solve a problem in a truly generic fashion. It’s common that organizations will have best practices on how to implement certain behaviors and Private Registry modules are the perfect place to implement these policies.
+*   **Private Registry:** Similar advantages to Public Registry, but since it’s unique to an organization, it’s much easier to write modules which cover all of the potential use cases for an organization, without having to solve a problem in a truly generic fashion. It’s common that organizations will have best practices on how to implement certain behaviors and Private Registry modules are the perfect place to implement these policies.
 
 
 ### Generalized Child Modules
@@ -201,7 +201,7 @@ There is more nuance to deciding where a module (which isn't in a modules subfol
     *   Disadvantages:
         *   Discovery can be difficult
         *   Leads to repository sprawl
-*   **Monorepo: **A single repository for all Terraform code. 
+*   **Monorepo:** A single repository for all Terraform code. 
     *   Advantages:
         *   One place to find all Terraform code
     *   Disadvantages:
@@ -268,7 +268,7 @@ Well written Terraform modules should be reusable without changes. Like printing
 
 
 *   **Random Resource:** Use the random resource, either random_id, or random_string to create a chunk of text that can be inserted into name parameters to make them unique. This is the preferred method.
-*   **Prefix Variable: **Use a required variable to allow the user to specify a unique string to be inserted into name parameters.
+*   **Prefix Variable:** Use a required variable to allow the user to specify a unique string to be inserted into name parameters.
 *   **Both:** Have an optional prefix variable, and use logic to create a local which is the random resource string if the prefix variable is empty.
 
 
@@ -414,10 +414,10 @@ Terraform is excellent at deploying infrastructure. Sometimes that also includes
     *   **Scheduler vs Terraform:** Modern methodology for managing workload deployment using a tool such as Kubernetes or HashiCorp Nomad. Schedulers typically support blue/green and canary deployments along with integrated health checks.
 *   Method to Configure a VM (in order of preference)
     *   **Immutable Images:** Using a tool such as HashiCorp Packer, immutable images can be created automatically in a pipeline then stored in an artifact repository. This method requires up front investment in process, but provides the greatest degree of consistency by ensuring that every deployment is identical.
-    *   **Userdata: **All the major cloud providers support Cloud Init to pass configuration information to a VM. This can be in the form of a shell script, or something more complicated such as calling a config management tool. These typically only run once, and can be extremely brittle due to timeouts or unexpected changes in external resources being called. Terraform does not validate if the userdata script is successful.
+    *   **Userdata:** All the major cloud providers support Cloud Init to pass configuration information to a VM. This can be in the form of a shell script, or something more complicated such as calling a config management tool. These typically only run once, and can be extremely brittle due to timeouts or unexpected changes in external resources being called. Terraform does not validate if the userdata script is successful.
     *   **Provisioners:** This is considered an anti-pattern and should be avoided unless no other option is available. Provisioners allow Terraform to execute arbitrary commands but present a security issue by necessitating access to the resources from wherever Terraform is running, and generally handle idempotency, failures, and drift poorly.
 *   Upgrade Process for Workload
     *   **Deploy New Image:** Either immutable or configured via userdata/provisioners. A new image can be deployed and configuration adjusted to utilize it. Terraform natively does not handle this cutover gracefully. By default it will destroy the old workload first, resulting in downtime. Lifecycle metadata can be used to configure create before destroy, minimizing downtown, but Terraform still has no concept of health checks or session draining.
     *   **Rerun Provisioners:** If provisioners are being used, they could be tainted and reran. The success or failure however falls on the code themselves and isn’t well handled by Terraform.
     *   **Config Management/Deployment Tools:** Have other tooling handle this outside of Terraform’s knowledge. Terraform can potentially “kick” the tool the first time, and let it handle updates in the future.
-    *   **Scheduler: **This is the preferred methodology. Schedulers can handle lifecycle, while understanding health checks and roll backs. Terraform should be used to configure all the underlying infrastructure then pass off workload management to a scheduler on top of that infrastructure.
+    *   **Scheduler:** This is the preferred methodology. Schedulers can handle lifecycle, while understanding health checks and roll backs. Terraform should be used to configure all the underlying infrastructure then pass off workload management to a scheduler on top of that infrastructure.
